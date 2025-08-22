@@ -1,0 +1,16 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: load-simulator
+spec:
+  selector:
+    matchLabels:
+      app: load-simulator
+  template:
+    metadata:
+      labels:
+        app: load-simulator
+    spec:
+      containers:
+        - name: load-simulator
+          image: ko://github.com/kubescape/load-simulator
