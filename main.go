@@ -3,9 +3,7 @@ package main
 import (
 	"context"
 	"log"
-	"net"
 	"os"
-	"os/exec"
 	"os/signal"
 	"syscall"
 	"time"
@@ -30,57 +28,24 @@ func initConfig() {
 func main() {
 	initConfig()
 
+	// Start a simple HTTP server for testing
+	go httpServer()
+
 	// Create a context that can be used to stop the goroutines.
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	// Go routine to generate file opens
-	go runAtRate(ctx, "os.Open", viper.GetInt("openRate"), func() {
-		file, err := os.Open("/dev/null")
-		if err != nil {
-			log.Println("Error opening file:", err)
-			return
-		}
-		_ = file.Close()
-	})
+	go runAtRate(ctx, "open", viper.GetInt("openRate"), openFunc)
 
 	// Go routine to generate execs
-	go runAtRate(ctx, "cmd.Run", viper.GetInt("execRate"), func() {
-		cmd := exec.CommandContext(ctx, "true")
-		if err := cmd.Run(); err != nil {
-			log.Println("Error executing command:", err)
-		}
-	})
-
-	// Start a simple TCP server on port 8080 for testing
-	go func() {
-		ln, err := net.Listen("tcp", ":8080")
-		if err != nil {
-			log.Println("Error starting test server:", err)
-			return
-		}
-		defer func(ln net.Listener) {
-			_ = ln.Close()
-		}(ln)
-		for {
-			conn, err := ln.Accept()
-			if err != nil {
-				return
-			}
-			_ = conn.Close()
-		}
-	}()
+	go runAtRate(ctx, "exec", viper.GetInt("execRate"), execFunc)
 
 	// Go routine to generate network connections
-	go runAtRate(ctx, "net.DialTimeout", viper.GetInt("networkRate"), func() {
-		address := "localhost:8080"
-		conn, err := net.DialTimeout("tcp", address, time.Second)
-		if err != nil {
-			log.Println("Error connecting to", address, err)
-			return
-		}
-		_ = conn.Close()
-	})
+	go runAtRate(ctx, "network", viper.GetInt("networkRate"), networkFunc)
+
+	// Go routine to generate HTTP requests
+	go runAtRate(ctx, "http", viper.GetInt("httpRate"), httpFunc)
 
 	log.Println("Started system activity generator...")
 

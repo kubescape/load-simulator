@@ -8,3 +8,4 @@ data:
     openRate: 10
     execRate: 10
     networkRate: 10
+    httpRate: 10
