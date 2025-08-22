@@ -14,3 +14,10 @@ spec:
       containers:
         - name: load-simulator
           image: ko://github.com/kubescape/load-simulator
+          volumeMounts:
+            - mountPath: /etc/config
+              name: config-volume
+      volumes:
+        - name: config-volume
+          configMap:
+            name: config

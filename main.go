@@ -10,26 +10,42 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/spf13/viper"
 	"golang.org/x/time/rate"
 )
 
+func initConfig() {
+	viper.SetConfigName("config")
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath(".")
+	viper.AddConfigPath("/etc/config")
+	err := viper.ReadInConfig()
+	if err != nil {
+		log.Fatalf("Config file not found: %v\n", err)
+	} else {
+		log.Printf("Using config file: %s\n", viper.ConfigFileUsed())
+	}
+}
+
 func main() {
+	initConfig()
+
 	// Create a context that can be used to stop the goroutines.
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	// Go routine to generate file opens
-	go runAtRate(ctx, "os.Open", 100, func() {
+	go runAtRate(ctx, "os.Open", viper.GetInt("openRate"), func() {
 		file, err := os.Open("/dev/null")
 		if err != nil {
 			log.Println("Error opening file:", err)
 			return
 		}
-		file.Close()
+		_ = file.Close()
 	})
 
 	// Go routine to generate execs
-	go runAtRate(ctx, "cmd.Run", 5, func() {
+	go runAtRate(ctx, "cmd.Run", viper.GetInt("execRate"), func() {
 		cmd := exec.CommandContext(ctx, "true")
 		if err := cmd.Run(); err != nil {
 			log.Println("Error executing command:", err)
@@ -43,20 +59,22 @@ func main() {
 			log.Println("Error starting test server:", err)
 			return
 		}
-		defer ln.Close()
+		defer func(ln net.Listener) {
+			_ = ln.Close()
+		}(ln)
 		for {
 			conn, err := ln.Accept()
 			if err != nil {
 				return
 			}
-			conn.Close()
+			_ = conn.Close()
 		}
 	}()
 
 	// Go routine to generate network connections
-	go runAtRate(ctx, "net.DialTimeout", 100, func() {
-		address := "127.0.0.1:8080"
-		conn, err := net.DialTimeout("tcp", address, time.Millisecond)
+	go runAtRate(ctx, "net.DialTimeout", viper.GetInt("networkRate"), func() {
+		address := "localhost:8080"
+		conn, err := net.DialTimeout("tcp", address, time.Second)
 		if err != nil {
 			log.Println("Error connecting to", address, err)
 			return
@@ -77,6 +95,9 @@ func main() {
 }
 
 func runAtRate(ctx context.Context, name string, timesPerSecond int, f func()) {
+	if timesPerSecond <= 0 {
+		return
+	}
 	limiter := rate.NewLimiter(rate.Limit(timesPerSecond), timesPerSecond)
 	log.Println("Running", name, "at rate:", timesPerSecond, "times per second")
 	for {
