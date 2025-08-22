@@ -35,17 +35,26 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Go routine to generate file opens
-	go runAtRate(ctx, "open", viper.GetInt("openRate"), openFunc)
+	// Go routine to generate DNS lookups
+	go runAtRate(ctx, "dns", viper.GetInt("dnsRate"), dnsFunc)
 
 	// Go routine to generate execs
 	go runAtRate(ctx, "exec", viper.GetInt("execRate"), execFunc)
 
-	// Go routine to generate network connections
-	go runAtRate(ctx, "network", viper.GetInt("networkRate"), networkFunc)
+	// Go routine to generate hard links
+	go runAtRate(ctx, "hardlink", viper.GetInt("hardlinkRate"), hardlinkFunc)
 
 	// Go routine to generate HTTP requests
 	go runAtRate(ctx, "http", viper.GetInt("httpRate"), httpFunc)
+
+	// Go routine to generate network connections
+	go runAtRate(ctx, "network", viper.GetInt("networkRate"), networkFunc)
+
+	// Go routine to generate file opens
+	go runAtRate(ctx, "open", viper.GetInt("openRate"), openFunc)
+
+	// Go routine to generate symlinks
+	go runAtRate(ctx, "symlink", viper.GetInt("symlinkRate"), symlinkFunc)
 
 	log.Println("Started system activity generator...")
 

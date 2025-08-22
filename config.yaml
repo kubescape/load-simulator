@@ -1,4 +1,7 @@
-openRate: 10
+dnsRate: 10
 execRate: 10
-networkRate: 10
+hardlinkRate: 10
 httpRate: 10
+networkRate: 10
+openRate: 10
+symlinkRate: 10
