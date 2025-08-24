@@ -5,10 +5,12 @@ metadata:
   namespace: default
 data:
   config.yaml: |
-    dnsRate: 10
+    cpuLoadMs: 200
+    numberParallelCPUs: 4
+    dnsRate: 1
     execRate: 10
     hardlinkRate: 10
     httpRate: 10
     networkRate: 10
-    openRate: 10
+    openRate: 100
     symlinkRate: 10

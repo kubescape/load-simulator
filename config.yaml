@@ -1,3 +1,4 @@
+cpuLoadMs: 200
 dnsRate: 10
 execRate: 10
 hardlinkRate: 10
