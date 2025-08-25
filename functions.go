@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"crypto/sha256"
 	"log"
 	"net"
 	"net/http"
@@ -25,9 +27,22 @@ func httpServer() {
 }
 
 func dnsFunc() {
-	_, err := net.LookupHost("google.com")
+	// Generate a unique subdomain to ensure no caching
+	// This forces a fresh DNS lookup every time
+	uniqueID := uuid.New().String()[:8] // Use first 8 chars of UUID
+	hostname := uniqueID + ".nip.io"
+
+	// Create a custom resolver with no caching
+	resolver := &net.Resolver{
+		PreferGo: true, // Use Go's DNS resolver instead of system resolver
+	}
+
+	// Perform DNS lookup with unique hostname
+	_, err := resolver.LookupHost(context.Background(), hostname)
 	if err != nil {
-		log.Println("Error performing DNS lookup:", err)
+		log.Println("Error performing DNS lookup for", hostname, ":", err)
+	} else {
+		log.Println("DNS lookup successful for", hostname)
 	}
 }
 
@@ -92,4 +107,41 @@ func symlinkFunc() {
 		log.Println("Error creating hard link:", err)
 	}
 	_ = os.Remove(dest)
+}
+
+func loadSingleCPU(ctx context.Context, loadPercent int) {
+	// Ensure loadPercent is within valid range (0-1000 for 0-100%)
+	if loadPercent < 0 {
+		loadPercent = 0
+	} else if loadPercent > 1000 {
+		loadPercent = 1000
+	}
+
+	// Calculate sleep time to achieve desired CPU load
+	// For 25% load, we need to sleep 75% of the time
+	sleepTime := time.Duration(1000-loadPercent) * time.Microsecond
+	workTime := time.Duration(loadPercent) * time.Microsecond
+
+	log.Printf("Starting CPU load generator at %d%% (sleep: %v, work: %v)",
+		loadPercent/10, sleepTime, workTime)
+
+	for {
+		select {
+		case <-ctx.Done():
+			log.Println("CPU load generator stopped")
+			return
+		default:
+			// Do some CPU-intensive work for the specified duration
+			start := time.Now()
+			for time.Since(start) < workTime {
+				// CPU-intensive SHA256 hash calculation
+				data := []byte("load-simulator-cpu-work")
+				hash := sha256.Sum256(data)
+				_ = hash
+			}
+
+			// Sleep for the remaining time to achieve desired load percentage
+			time.Sleep(sleepTime)
+		}
+	}
 }

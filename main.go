@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 	"time"
 
@@ -36,25 +37,54 @@ func main() {
 	defer cancel()
 
 	// Go routine to generate DNS lookups
-	go runAtRate(ctx, "dns", viper.GetInt("dnsRate"), dnsFunc)
+	if viper.IsSet("dnsRate") {
+		go runAtRate(ctx, "dns", viper.GetInt("dnsRate"), dnsFunc)
+	}
 
 	// Go routine to generate execs
-	go runAtRate(ctx, "exec", viper.GetInt("execRate"), execFunc)
+	if viper.IsSet("execRate") {
+		go runAtRate(ctx, "exec", viper.GetInt("execRate"), execFunc)
+	}
 
 	// Go routine to generate hard links
-	go runAtRate(ctx, "hardlink", viper.GetInt("hardlinkRate"), hardlinkFunc)
+	if viper.IsSet("hardlinkRate") {
+		go runAtRate(ctx, "hardlink", viper.GetInt("hardlinkRate"), hardlinkFunc)
+	}
 
 	// Go routine to generate HTTP requests
-	go runAtRate(ctx, "http", viper.GetInt("httpRate"), httpFunc)
+	if viper.IsSet("httpRate") {
+		go runAtRate(ctx, "http", viper.GetInt("httpRate"), httpFunc)
+	}
+
+	if viper.IsSet("cpuLoadMs") {
+		numberParallelCPUs := 1
+		if viper.IsSet("numberParallelCPUs") {
+			numberParallelCPUs = viper.GetInt("numberParallelCPUs")
+			maxCPUs := runtime.NumCPU()
+			if numberParallelCPUs > maxCPUs {
+				log.Printf("Requested numberParallelCPUs (%d) is greater than available CPUs (%d). Using %d.", numberParallelCPUs, maxCPUs, maxCPUs)
+				numberParallelCPUs = maxCPUs
+			}
+		}
+		for i := 0; i < numberParallelCPUs; i++ {
+			go loadSingleCPU(ctx, viper.GetInt("cpuLoadMs"))
+		}
+	}
 
 	// Go routine to generate network connections
-	go runAtRate(ctx, "network", viper.GetInt("networkRate"), networkFunc)
+	if viper.IsSet("networkRate") {
+		go runAtRate(ctx, "network", viper.GetInt("networkRate"), networkFunc)
+	}
 
 	// Go routine to generate file opens
-	go runAtRate(ctx, "open", viper.GetInt("openRate"), openFunc)
+	if viper.IsSet("openRate") {
+		go runAtRate(ctx, "open", viper.GetInt("openRate"), openFunc)
+	}
 
 	// Go routine to generate symlinks
-	go runAtRate(ctx, "symlink", viper.GetInt("symlinkRate"), symlinkFunc)
+	if viper.IsSet("symlinkRate") {
+		go runAtRate(ctx, "symlink", viper.GetInt("symlinkRate"), symlinkFunc)
+	}
 
 	log.Println("Started system activity generator...")
 
