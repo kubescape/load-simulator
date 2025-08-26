@@ -41,8 +41,6 @@ func dnsFunc() {
 	_, err := resolver.LookupHost(context.Background(), hostname)
 	if err != nil {
 		log.Println("Error performing DNS lookup for", hostname, ":", err)
-	} else {
-		log.Println("DNS lookup successful for", hostname)
 	}
 }
 
